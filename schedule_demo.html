@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>スタジオスケジュール一覧</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hiragino Sans','Meiryo',sans-serif;background:#f5f5f7;color:#1d1d1f;font-size:14px}
+header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);color:#fff;padding:16px 20px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+header h1{font-size:20px;font-weight:700;letter-spacing:.05em}
+header .meta{font-size:11px;color:#aaa;margin-top:4px}
+.filters{background:#fff;padding:14px 20px;border-bottom:1px solid #e0e0e0;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.filter-group{display:flex;flex-direction:column;gap:4px}
+.filter-group label{font-size:11px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+input[type=text]{border:1px solid #ddd;border-radius:6px;padding:6px 10px;font-size:13px;width:180px;outline:none}
+input[type=text]:focus{border-color:#0f3460}
+select{border:1px solid #ddd;border-radius:6px;padding:6px 10px;font-size:13px;background:#fff;outline:none;cursor:pointer}
+select:focus{border-color:#0f3460}
+.day-btns{display:flex;gap:4px;flex-wrap:wrap}
+.day-btn{border:1px solid #ddd;border-radius:6px;padding:5px 10px;font-size:13px;background:#fff;cursor:pointer;transition:all .15s}
+.day-btn.active{background:#0f3460;color:#fff;border-color:#0f3460}
+.gym-pills{display:flex;gap:6px;flex-wrap:wrap}
+.gym-pill{border:1px solid #ddd;border-radius:20px;padding:4px 12px;font-size:12px;background:#fff;cursor:pointer;transition:all .15s;white-space:nowrap}
+.gym-pill.active{background:#0f3460;color:#fff;border-color:#0f3460}
+.gym-pill.goldsgym.active{background:#c8a200;border-color:#c8a200}
+.gym-pill.chacott.active{background:#7b2d8b;border-color:#7b2d8b}
+.toolbar{display:flex;justify-content:space-between;align-items:center;padding:10px 20px;background:#fff;border-bottom:1px solid #e0e0e0}
+.count{font-size:13px;color:#555}
+.count strong{color:#0f3460;font-size:15px}
+.view-btns{display:flex;gap:4px}
+.view-btn{border:1px solid #ddd;border-radius:6px;padding:5px 12px;font-size:12px;background:#fff;cursor:pointer}
+.view-btn.active{background:#0f3460;color:#fff;border-color:#0f3460}
+.main{padding:16px 20px}
+/* テーブルビュー */
+.table-wrap{overflow-x:auto}
+table.schedule{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+table.schedule th{background:#0f3460;color:#fff;padding:10px 12px;text-align:left;font-size:12px;white-space:nowrap}
+table.schedule td{padding:9px 12px;border-bottom:1px solid #f0f0f0;vertical-align:top}
+table.schedule tr:last-child td{border-bottom:none}
+table.schedule tr:hover td{background:#f8f9ff}
+.badge-day{display:inline-block;background:#e8f0fe;color:#1a56db;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700}
+.badge-day.土{background:#fff0e8;color:#d05000}
+.badge-day.日{background:#fde8e8;color:#c0392b}
+.badge-gym{display:inline-block;border-radius:4px;padding:2px 7px;font-size:11px;white-space:nowrap}
+.badge-gym.goldsgym{background:#fff8dc;color:#7a5c00}
+.badge-gym.chacott{background:#f3e8ff;color:#5b21b6}
+.class-name{font-weight:600;font-size:13px}
+.instructor{color:#555;font-size:12px;margin-top:2px}
+.level{color:#888;font-size:11px}
+.time-cell{white-space:nowrap;font-weight:500;color:#333}
+/* カードビュー */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.card{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:14px;display:flex;flex-direction:column;gap:6px}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.card-gym{font-size:11px;font-weight:600}
+.card-gym.goldsgym{color:#7a5c00}
+.card-gym.chacott{color:#5b21b6}
+.card-time{font-size:12px;color:#555;white-space:nowrap}
+.card-name{font-weight:700;font-size:14px;line-height:1.4}
+.card-inst{font-size:12px;color:#555}
+.card-level{font-size:11px;color:#888}
+.card-day-badge{font-size:11px;font-weight:700}
+.no-data{text-align:center;padding:60px 20px;color:#999;font-size:16px}
+.error-notice{background:#fff8f0;border:1px solid #ffd0a0;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#884400}
+.hidden{display:none!important}
+@media(max-width:600px){
+  .filters{flex-direction:column}
+  input[type=text]{width:100%}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏋️ スタジオスケジュール一覧</h1>
+  <div class="meta">最終更新: 2026年03月26日 04:17</div>
+</header>
+
+<div class="filters">
+  <div class="filter-group">
+    <label>インストラクター検索</label>
+    <input type="text" id="searchInst" placeholder="名前を入力...">
+  </div>
+  <div class="filter-group">
+    <label>プログラム</label>
+    <select id="programFilter"><option value="">すべて</option></select>
+  </div>
+  <div class="filter-group">
+    <label>曜日</label>
+    <div class="day-btns" id="dayBtns">
+      <button class="day-btn active" data-day="">全</button>
+      <button class="day-btn" data-day="月">月</button>
+      <button class="day-btn" data-day="火">火</button>
+      <button class="day-btn" data-day="水">水</button>
+      <button class="day-btn" data-day="木">木</button>
+      <button class="day-btn" data-day="金">金</button>
+      <button class="day-btn" data-day="土">土</button>
+      <button class="day-btn" data-day="日">日</button>
+    </div>
+  </div>
+  <div class="filter-group" style="flex:1 1 100%">
+    <label>店舗</label>
+    <div class="gym-pills" id="gymPills"></div>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="count"><strong id="countNum">0</strong> 件表示中</div>
+  <div class="view-btns">
+    <button class="view-btn active" id="btnTable" onclick="setView('table')">📋 リスト</button>
+    <button class="view-btn" id="btnCard" onclick="setView('card')">🃏 カード</button>
+  </div>
+</div>
+
+<div class="main">
+  <div id="errorNotices"></div>
+  <div id="tableView" class="table-wrap">
+    <table class="schedule">
+      <thead>
+        <tr>
+          <th>曜日</th>
+          <th>時間</th>
+          <th>プログラム</th>
+          <th>インストラクター</th>
+          <th>店舗</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+  <div id="cardView" class="card-grid hidden"></div>
+  <div id="noData" class="no-data hidden">該当するスケジュールがありません</div>
+</div>
+
+<script>
+const RAW = {"updated_at": "2026-03-26T04:17:17.900781", "schedules": [{"gym": "ゴールドジム 原宿東京", "gym_short": "原宿東京", "gym_type": "goldsgym", "source_url": "https://www.goldsgym.jp/shop/13150/schedule", "pdf_url": null, "error": null, "classes": [{"day": "月", "time_start": "10:00", "time_end": "10:50", "name": "エアロビクス", "instructor": "田中 花子", "level": "初中級", "gym_short": "原宿東京"}, {"day": "火", "time_start": "11:00", "time_end": "11:50", "name": "ヨガ", "instructor": "山田 太郎", "level": "初級", "gym_short": "原宿東京"}, {"day": "水", "time_start": "19:00", "time_end": "19:50", "name": "ボクシングエクササイズ", "instructor": "鈴木 一郎", "level": "全レベル", "gym_short": "原宿東京"}, {"day": "土", "time_start": "10:00", "time_end": "11:00", "name": "バレエ", "instructor": "佐藤 美子", "level": "初中級", "gym_short": "原宿東京"}]}, {"gym": "ゴールドジム 渋谷", "gym_short": "渋谷", "gym_type": "goldsgym", "source_url": "https://www.goldsgym.jp/shop/13180/schedule", "pdf_url": null, "error": "スケジュールデータが見つかりませんでした", "classes": [{"day": "月", "time_start": "12:00", "time_end": "12:45", "name": "ズンバ", "instructor": "伊藤 花", "level": "初中級", "gym_short": "渋谷"}, {"day": "木", "time_start": "18:30", "time_end": "19:15", "name": "バレエ", "instructor": "中村 幸子", "level": "中級", "gym_short": "渋谷"}]}, {"gym": "チャコットスタジオ 代官山", "gym_short": "代官山(チャコット)", "gym_type": "chacott", "source_url": "https://www.chacott-jp.com/lesson/studio/daikanyama/schedule/", "pdf_url": null, "error": null, "classes": [{"day": "金", "time_start": "11:40", "time_end": "13:10", "name": "バレエ基礎", "instructor": "橘 るみ", "level": "", "gym_short": "代官山(チャコット)"}, {"day": "火", "time_start": "19:00", "time_end": "20:30", "name": "バレエ初中級", "instructor": "小林 由佳", "level": "", "gym_short": "代官山(チャコット)"}, {"day": "土", "time_start": "10:00", "time_end": "11:30", "name": "ラテンエクササイズ", "instructor": "高橋 亜希", "level": "", "gym_short": "代官山(チャコット)"}]}]};
+
+// フラット化
+const ALL_CLASSES = [];
+const GYM_INFO = {};
+
+RAW.schedules.forEach(s => {
+  GYM_INFO[s.gym_short] = { type: s.gym_type, name: s.gym };
+  s.classes.forEach(c => {
+    ALL_CLASSES.push({
+      ...c,
+      gym: s.gym,
+      gym_short: s.gym_short,
+      gym_type: s.gym_type,
+    });
+  });
+});
+
+// ── ソート: 曜日 → 時間 ──
+const DAY_ORDER = {"月":0,"火":1,"水":2,"木":3,"金":4,"土":5,"日":6};
+ALL_CLASSES.sort((a,b) => {
+  const dd = (DAY_ORDER[a.day]??9) - (DAY_ORDER[b.day]??9);
+  if (dd !== 0) return dd;
+  return (a.time_start||"").localeCompare(b.time_start||"");
+});
+
+// ── プログラムドロップダウン構築 ──
+const programs = [...new Set(ALL_CLASSES.map(c => c.name).filter(Boolean))].sort();
+const progSel = document.getElementById("programFilter");
+programs.forEach(p => {
+  const o = document.createElement("option");
+  o.value = p; o.textContent = p;
+  progSel.appendChild(o);
+});
+
+// ── 店舗ピル構築 ──
+const gymPills = document.getElementById("gymPills");
+const allPill = document.createElement("button");
+allPill.className = "gym-pill active"; allPill.textContent = "すべて"; allPill.dataset.gym = "";
+gymPills.appendChild(allPill);
+
+RAW.schedules.forEach(s => {
+  const btn = document.createElement("button");
+  btn.className = `gym-pill ${s.gym_type}`;
+  btn.textContent = s.gym_short; btn.dataset.gym = s.gym_short;
+  gymPills.appendChild(btn);
+});
+
+// ── エラー表示 ──
+const errorDiv = document.getElementById("errorNotices");
+RAW.schedules.filter(s => s.error).forEach(s => {
+  const d = document.createElement("div");
+  d.className = "error-notice";
+  d.textContent = `⚠️ ${s.gym_short}: ${s.error}`;
+  errorDiv.appendChild(d);
+});
+
+// ── 状態 ──
+let state = { day:"", gym:"", program:"", search:"", view:"table" };
+
+function setView(v) {
+  state.view = v;
+  document.getElementById("tableView").classList.toggle("hidden", v !== "table");
+  document.getElementById("cardView").classList.toggle("hidden", v !== "card");
+  document.getElementById("btnTable").classList.toggle("active", v === "table");
+  document.getElementById("btnCard").classList.toggle("active", v === "card");
+}
+
+// ── フィルター ──
+function applyFilters() {
+  const q = state.search.toLowerCase();
+  const filtered = ALL_CLASSES.filter(c => {
+    if (state.day && c.day !== state.day) return false;
+    if (state.gym && c.gym_short !== state.gym) return false;
+    if (state.program && c.name !== state.program) return false;
+    if (q && !(c.instructor||"").toLowerCase().includes(q) && !(c.name||"").toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  document.getElementById("countNum").textContent = filtered.length;
+  renderTable(filtered);
+  renderCards(filtered);
+  document.getElementById("noData").classList.toggle("hidden", filtered.length > 0);
+}
+
+function dayClass(day) {
+  if (day === "土") return "badge-day 土";
+  if (day === "日") return "badge-day 日";
+  return "badge-day";
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = "";
+  data.forEach(c => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><span class="${dayClass(c.day)}">${c.day}</span></td>
+      <td class="time-cell">${c.time_start}〜${c.time_end}</td>
+      <td>
+        <div class="class-name">${esc(c.name)}</div>
+        ${c.level ? `<div class="level">${esc(c.level)}</div>` : ""}
+      </td>
+      <td><div class="instructor">${esc(c.instructor||"—")}</div></td>
+      <td><span class="badge-gym ${c.gym_type}">${esc(c.gym_short)}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderCards(data) {
+  const grid = document.getElementById("cardView");
+  grid.innerHTML = "";
+  data.forEach(c => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="card-gym ${c.gym_type}">${esc(c.gym_short)}</span>
+        <span class="card-time">${c.time_start}〜${c.time_end}</span>
+      </div>
+      <div class="card-name">${esc(c.name)}</div>
+      ${c.instructor ? `<div class="card-inst">👤 ${esc(c.instructor)}</div>` : ""}
+      ${c.level ? `<div class="card-level">${esc(c.level)}</div>` : ""}
+      <div><span class="${dayClass(c.day)}" style="font-size:12px">${c.day}曜日</span></div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// ── イベントリスナー ──
+document.getElementById("searchInst").addEventListener("input", e => {
+  state.search = e.target.value; applyFilters();
+});
+
+progSel.addEventListener("change", e => {
+  state.program = e.target.value; applyFilters();
+});
+
+document.getElementById("dayBtns").addEventListener("click", e => {
+  if (!e.target.dataset.hasOwnProperty("day")) return;
+  state.day = e.target.dataset.day;
+  document.querySelectorAll(".day-btn").forEach(b => b.classList.toggle("active", b.dataset.day === state.day));
+  applyFilters();
+});
+
+gymPills.addEventListener("click", e => {
+  const btn = e.target.closest(".gym-pill");
+  if (!btn) return;
+  state.gym = btn.dataset.gym;
+  document.querySelectorAll(".gym-pill").forEach(b => b.classList.toggle("active", b.dataset.gym === state.gym));
+  applyFilters();
+});
+
+// ── 初期表示 ──
+applyFilters();
+</script>
+</body>
+</html>
